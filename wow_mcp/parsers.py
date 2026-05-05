@@ -7,6 +7,38 @@ def flatten_equipped_item(raw: dict) -> dict:
     }
 
 
+def summarize_achievement_progress(raw: dict) -> dict | None:
+    """Reduce a raw achievement entry to its in-progress shape, or None if there
+    is no useful progress signal to surface.
+
+    Only meaningful for *incomplete* achievements — callers should filter on
+    completed_timestamp before calling. Old completed achievements often have
+    stale criteria flags (all false), so criteria are not authoritative for
+    completion."""
+    criteria = raw.get("criteria") or {}
+    children = criteria.get("child_criteria") or []
+    name = (raw.get("achievement") or {}).get("name")
+    achievement_id = raw.get("id")
+
+    if children:
+        completed = sum(1 for c in children if c.get("is_completed"))
+        total = len(children)
+        amount = children[0].get("amount") if total == 1 else None
+        if completed == 0 and not amount:
+            return None
+        result = {
+            "id": achievement_id,
+            "name": name,
+            "criteria_completed": completed,
+            "criteria_total": total,
+        }
+        if amount:
+            result["current_amount"] = amount
+        return result
+
+    return None
+
+
 def extract_profession_tier(profession: dict) -> dict:
     tiers = profession.get("tiers", [])
     if tiers:

@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from wow_mcp.parsers import flatten_equipped_item, extract_profession_tier
+from wow_mcp.parsers import (
+    flatten_equipped_item,
+    extract_profession_tier,
+    summarize_achievement_progress,
+)
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -67,3 +71,36 @@ def test_extract_profession_tier_secondary():
         "skill_points": 25,
         "max_skill_points": 100,
     }
+
+
+def test_summarize_achievement_progress_multi_step():
+    achievements = load("achievements.json")["achievements"]
+    hemet = next(a for a in achievements if a["id"] == 941)
+    assert summarize_achievement_progress(hemet) == {
+        "id": 941,
+        "name": "Hemet Nesingwary: The Collected Quests",
+        "criteria_completed": 1,
+        "criteria_total": 3,
+    }
+
+
+def test_summarize_achievement_progress_single_counter():
+    achievements = load("achievements.json")["achievements"]
+    kills = next(a for a in achievements if a["id"] == 515)
+    assert summarize_achievement_progress(kills) == {
+        "id": 515,
+        "name": "500 Honorable Kills",
+        "criteria_completed": 0,
+        "criteria_total": 1,
+        "current_amount": 452,
+    }
+
+
+def test_summarize_achievement_progress_untouched_returns_none():
+    achievements = load("achievements.json")["achievements"]
+    untouched = next(a for a in achievements if a["id"] == 9999)
+    assert summarize_achievement_progress(untouched) is None
+
+
+def test_summarize_achievement_progress_no_criteria_returns_none():
+    assert summarize_achievement_progress({"id": 1, "achievement": {"name": "Bare"}}) is None

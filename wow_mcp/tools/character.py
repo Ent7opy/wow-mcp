@@ -1,5 +1,9 @@
 from wow_mcp.app import client, config, mcp, tool_safe
-from wow_mcp.parsers import extract_profession_tier, flatten_equipped_item
+from wow_mcp.parsers import (
+    extract_profession_tier,
+    flatten_equipped_item,
+    summarize_achievement_progress,
+)
 
 
 @mcp.tool()
@@ -89,16 +93,21 @@ def get_character_achievements(
     character: str | None = None,
     realm: str | None = None,
     region: str | None = None,
+    include_progress: bool = False,
 ) -> dict:
-    """Get completed achievements for a WoW character.
+    """Get achievements for a WoW character.
 
     Args:
         character: Character name. Falls back to WOW_CHARACTER_NAME env var.
         realm: Realm slug. Falls back to WOW_REALM env var.
         region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+        include_progress: If True, also include in-progress achievements with
+            their criteria progress (e.g. "452/500 honorable kills"). Default
+            False keeps the response small for "what have I done?" questions.
     """
     c, r, g = config.resolve(character, realm, region)
     data = client.get(f"/profile/wow/character/{r}/{c}/achievements", "profile", g)
+    raw = data.get("achievements", [])
 
     completed = [
         {
@@ -106,10 +115,27 @@ def get_character_achievements(
             "name": (a.get("achievement") or {}).get("name"),
             "completed_timestamp": a.get("completed_timestamp"),
         }
-        for a in data.get("achievements", [])
+        for a in raw
         if a.get("completed_timestamp")
     ]
-    return {
+    result: dict = {
         "total_completed": len(completed),
         "achievements": completed,
     }
+
+    if include_progress:
+        in_progress = [
+            summary
+            for a in raw
+            if not a.get("completed_timestamp")
+            for summary in [summarize_achievement_progress(a)]
+            if summary is not None
+        ]
+        in_progress.sort(
+            key=lambda s: s["criteria_completed"] / s["criteria_total"],
+            reverse=True,
+        )
+        result["in_progress"] = in_progress
+        result["total_in_progress"] = len(in_progress)
+
+    return result
