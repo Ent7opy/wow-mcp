@@ -1,0 +1,22 @@
+{
+  "primaries": [
+    {
+      "profession": {"id": 164, "name": "Blacksmithing"},
+      "tiers": [
+        {"tier": {"name": "Classic Blacksmithing"}, "skill_points": 300, "max_skill_points": 300},
+        {"tier": {"name": "Khaz Algar Blacksmithing"}, "skill_points": 87, "max_skill_points": 100}
+      ]
+    },
+    {
+      "profession": {"id": 186, "name": "Mining"}
+    }
+  ],
+  "secondaries": [
+    {
+      "profession": {"id": 185, "name": "Cooking"},
+      "tiers": [
+        {"tier": {"name": "Khaz Algar Cooking"}, "skill_points": 25, "max_skill_points": 100}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "equipped_items": [
+    {
+      "slot": {"type": "HEAD", "name": "Head"},
+      "item": {"id": 12345, "name": "Helm of Testing"},
+      "name": "Helm of Testing",
+      "level": {"value": 489, "display_string": "Item Level 489"},
+      "quality": {"type": "EPIC", "name": "Epic"}
+    },
+    {
+      "slot": {"type": "TABARD", "name": "Tabard"},
+      "item": {"id": 67890}
+    },
+    {
+      "slot": {"type": "MAIN_HAND", "name": "Main Hand"},
+      "item": {"id": 11111, "name": "Two-Hander"},
+      "name": "Two-Hander",
+      "level": {"value": 502}
+    }
+  ]
+}
