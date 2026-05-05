@@ -53,3 +53,24 @@ def extract_profession_tier(profession: dict) -> dict:
         "skill_points": skill,
         "max_skill_points": max_skill,
     }
+
+
+def extract_profession_with_recipes(profession: dict) -> dict:
+    """Same as extract_profession_tier but also includes a per-tier breakdown
+    with the known_recipes the API already returns. The top-level summary
+    fields stay identical to extract_profession_tier so include_recipes=True
+    is purely additive."""
+    summary = extract_profession_tier(profession)
+    summary["tiers"] = [
+        {
+            "name": (t.get("tier") or {}).get("name"),
+            "skill_points": t.get("skill_points", 0),
+            "max_skill_points": t.get("max_skill_points", 0),
+            "known_recipes": [
+                {"id": r.get("id"), "name": r.get("name")}
+                for r in (t.get("known_recipes") or [])
+            ],
+        }
+        for t in profession.get("tiers", [])
+    ]
+    return summary

@@ -3,8 +3,23 @@
     {
       "profession": {"id": 164, "name": "Blacksmithing"},
       "tiers": [
-        {"tier": {"name": "Classic Blacksmithing"}, "skill_points": 300, "max_skill_points": 300},
-        {"tier": {"name": "Khaz Algar Blacksmithing"}, "skill_points": 87, "max_skill_points": 100}
+        {
+          "tier": {"name": "Classic Blacksmithing"},
+          "skill_points": 300,
+          "max_skill_points": 300,
+          "known_recipes": [
+            {"id": 2660, "name": "Rough Sharpening Stone"},
+            {"id": 3320, "name": "Rough Grinding Stone"}
+          ]
+        },
+        {
+          "tier": {"name": "Khaz Algar Blacksmithing"},
+          "skill_points": 87,
+          "max_skill_points": 100,
+          "known_recipes": [
+            {"id": 49980, "name": "Charged Bismuth Hammer"}
+          ]
+        }
       ]
     },
     {

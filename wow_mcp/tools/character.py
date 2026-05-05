@@ -1,6 +1,7 @@
 from wow_mcp.app import client, config, mcp, tool_safe
 from wow_mcp.parsers import (
     extract_profession_tier,
+    extract_profession_with_recipes,
     flatten_equipped_item,
     summarize_achievement_progress,
 )
@@ -46,6 +47,7 @@ def get_character_professions(
     character: str | None = None,
     realm: str | None = None,
     region: str | None = None,
+    include_recipes: bool = False,
 ) -> dict:
     """Get a WoW character's professions with current skill levels.
 
@@ -53,13 +55,19 @@ def get_character_professions(
         character: Character name. Falls back to WOW_CHARACTER_NAME env var.
         realm: Realm slug. Falls back to WOW_REALM env var.
         region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+        include_recipes: If True, also return a per-tier breakdown including
+            every known_recipe the character has learned (id + name). Default
+            False keeps the response small for "what skills do I have?"
+            questions; flip to True to answer "what can I craft?" or "what
+            recipes am I missing?".
     """
     c, r, g = config.resolve(character, realm, region)
     data = client.get(f"/profile/wow/character/{r}/{c}/professions", "profile", g)
 
+    extract = extract_profession_with_recipes if include_recipes else extract_profession_tier
     return {
-        "primaries": [extract_profession_tier(p) for p in data.get("primaries", [])],
-        "secondaries": [extract_profession_tier(p) for p in data.get("secondaries", [])],
+        "primaries": [extract(p) for p in data.get("primaries", [])],
+        "secondaries": [extract(p) for p in data.get("secondaries", [])],
     }
 
 

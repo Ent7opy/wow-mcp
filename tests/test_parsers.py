@@ -4,6 +4,7 @@ from pathlib import Path
 from wow_mcp.parsers import (
     flatten_equipped_item,
     extract_profession_tier,
+    extract_profession_with_recipes,
     summarize_achievement_progress,
 )
 
@@ -70,6 +71,38 @@ def test_extract_profession_tier_secondary():
         "name": "Cooking",
         "skill_points": 25,
         "max_skill_points": 100,
+    }
+
+
+def test_extract_profession_with_recipes_full_breakdown():
+    profs = load("professions.json")["primaries"]
+    parsed = extract_profession_with_recipes(profs[0])
+    assert parsed["name"] == "Blacksmithing"
+    assert parsed["skill_points"] == 87
+    assert parsed["max_skill_points"] == 100
+    assert len(parsed["tiers"]) == 2
+    assert parsed["tiers"][0] == {
+        "name": "Classic Blacksmithing",
+        "skill_points": 300,
+        "max_skill_points": 300,
+        "known_recipes": [
+            {"id": 2660, "name": "Rough Sharpening Stone"},
+            {"id": 3320, "name": "Rough Grinding Stone"},
+        ],
+    }
+    assert parsed["tiers"][1]["known_recipes"] == [
+        {"id": 49980, "name": "Charged Bismuth Hammer"},
+    ]
+
+
+def test_extract_profession_with_recipes_no_tiers():
+    profs = load("professions.json")["primaries"]
+    parsed = extract_profession_with_recipes(profs[1])
+    assert parsed == {
+        "name": "Mining",
+        "skill_points": 0,
+        "max_skill_points": 0,
+        "tiers": [],
     }
 
 
