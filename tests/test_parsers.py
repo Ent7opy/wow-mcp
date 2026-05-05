@@ -3,6 +3,7 @@ from pathlib import Path
 
 from wow_mcp.parsers import (
     flatten_equipped_item,
+    flatten_reputation,
     extract_profession_tier,
     extract_profession_with_recipes,
     summarize_achievement_progress,
@@ -137,3 +138,46 @@ def test_summarize_achievement_progress_untouched_returns_none():
 
 def test_summarize_achievement_progress_no_criteria_returns_none():
     assert summarize_achievement_progress({"id": 1, "achievement": {"name": "Bare"}}) is None
+
+
+def test_flatten_reputation_classic_tier():
+    reps = load("reputations.json")["reputations"]
+    parsed = flatten_reputation(reps[0])
+    assert parsed == {
+        "faction_id": 76,
+        "faction": "Orgrimmar",
+        "standing": "Friendly",
+        "value": 571,
+        "max": 6000,
+        "progress_pct": 10,
+        "tier": 4,
+    }
+
+
+def test_flatten_reputation_renown():
+    reps = load("reputations.json")["reputations"]
+    parsed = flatten_reputation(reps[1])
+    assert parsed == {
+        "faction_id": 2503,
+        "faction": "Maruuk Centaur",
+        "standing": "Renown 12",
+        "value": 509,
+        "max": 2500,
+        "progress_pct": 20,
+        "renown_level": 12,
+    }
+
+
+def test_flatten_reputation_missing_value_and_max():
+    reps = load("reputations.json")["reputations"]
+    parsed = flatten_reputation(reps[2])
+    assert parsed == {
+        "faction_id": 9999,
+        "faction": "Edge Case Faction",
+        "standing": "Neutral",
+        "value": 0,
+        "max": 0,
+        "progress_pct": 0,
+    }
+    assert "tier" not in parsed
+    assert "renown_level" not in parsed

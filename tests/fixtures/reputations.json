@@ -1,0 +1,16 @@
+{
+  "reputations": [
+    {
+      "faction": {"id": 76, "name": "Orgrimmar"},
+      "standing": {"raw": 3571, "value": 571, "max": 6000, "tier": 4, "name": "Friendly"}
+    },
+    {
+      "faction": {"id": 2503, "name": "Maruuk Centaur"},
+      "standing": {"raw": 30509, "value": 509, "max": 2500, "name": "Renown 12", "renown_level": 12}
+    },
+    {
+      "faction": {"id": 9999, "name": "Edge Case Faction"},
+      "standing": {"name": "Neutral"}
+    }
+  ]
+}

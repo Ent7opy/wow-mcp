@@ -3,6 +3,7 @@ from wow_mcp.parsers import (
     extract_profession_tier,
     extract_profession_with_recipes,
     flatten_equipped_item,
+    flatten_reputation,
     summarize_achievement_progress,
 )
 
@@ -147,3 +148,34 @@ def get_character_achievements(
         result["total_in_progress"] = len(in_progress)
 
     return result
+
+
+@mcp.tool()
+@tool_safe
+def get_character_reputations(
+    character: str | None = None,
+    realm: str | None = None,
+    region: str | None = None,
+) -> dict:
+    """Get a WoW character's reputation standings with every faction they've
+    interacted with — classic factions (tier-based) and renown factions
+    (Dragonflight onward) both included.
+
+    Factions the character has never met do not appear in the response. So if
+    a player is asking about an allied-race or rep-gated unlock and the
+    relevant faction is missing, the answer is "you haven't started that
+    questline yet" rather than "you're at zero rep".
+
+    Args:
+        character: Character name. Falls back to WOW_CHARACTER_NAME env var.
+        realm: Realm slug. Falls back to WOW_REALM env var.
+        region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+    """
+    c, r, g = config.resolve(character, realm, region)
+    data = client.get(f"/profile/wow/character/{r}/{c}/reputations", "profile", g)
+
+    reputations = [flatten_reputation(rep) for rep in data.get("reputations", [])]
+    return {
+        "total": len(reputations),
+        "reputations": reputations,
+    }

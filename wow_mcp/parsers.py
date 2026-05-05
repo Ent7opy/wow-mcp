@@ -7,6 +7,34 @@ def flatten_equipped_item(raw: dict) -> dict:
     }
 
 
+def flatten_reputation(raw: dict) -> dict:
+    """Reduce a raw reputation entry to {faction, standing, value/max, pct}.
+
+    Two API shapes coexist: classic factions carry an integer `tier` (1-8 for
+    Hated through Exalted), while renown-style factions (Dragonflight onward)
+    carry `renown_level` instead. The fields are surfaced only when present so
+    Claude can distinguish them downstream."""
+    faction = raw.get("faction") or {}
+    standing = raw.get("standing") or {}
+    value = standing.get("value", 0) or 0
+    max_value = standing.get("max", 0) or 0
+    progress_pct = round(100 * value / max_value) if max_value else 0
+
+    result = {
+        "faction_id": faction.get("id"),
+        "faction": faction.get("name"),
+        "standing": standing.get("name"),
+        "value": value,
+        "max": max_value,
+        "progress_pct": progress_pct,
+    }
+    if "tier" in standing:
+        result["tier"] = standing["tier"]
+    if "renown_level" in standing:
+        result["renown_level"] = standing["renown_level"]
+    return result
+
+
 def summarize_achievement_progress(raw: dict) -> dict | None:
     """Reduce a raw achievement entry to its in-progress shape, or None if there
     is no useful progress signal to surface.
