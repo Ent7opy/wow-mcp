@@ -68,30 +68,33 @@ def get_character_profile(
         profile = bnet_get(base, "profile", token, g)
         equipment = bnet_get(f"{base}/equipment", "profile", token, g)
 
-        equipped_items = [
-            {
-                "slot": item["slot"]["type"],
-                "name": item["item"]["name"],
-                "item_level": item.get("level", {}).get("value"),
-                "quality": item.get("quality", {}).get("type"),
-            }
-            for item in equipment.get("equipped_items", [])
-        ]
+        equipped_items = []
+        for i, item in enumerate(equipment.get("equipped_items", [])):
+            try:
+                equipped_items.append({
+                    "slot": (item.get("slot") or {}).get("type"),
+                    "name": item.get("name") or (item.get("item") or {}).get("name"),
+                    "item_level": (item.get("level") or {}).get("value"),
+                    "quality": (item.get("quality") or {}).get("type"),
+                })
+            except Exception as e:
+                equipped_items.append({"parse_error": str(e), "raw_keys": list(item.keys()), "index": i})
 
         return {
             "name": profile.get("name"),
             "level": profile.get("level"),
-            "race": profile.get("race", {}).get("name"),
-            "class": profile.get("character_class", {}).get("name"),
-            "active_spec": profile.get("active_spec", {}).get("name"),
+            "race": (profile.get("race") or {}).get("name"),
+            "class": (profile.get("character_class") or {}).get("name"),
+            "active_spec": (profile.get("active_spec") or {}).get("name"),
             "average_item_level": profile.get("average_item_level"),
             "equipped_item_level": profile.get("equipped_item_level"),
-            "realm": profile.get("realm", {}).get("name"),
-            "faction": profile.get("faction", {}).get("name"),
+            "realm": (profile.get("realm") or {}).get("name"),
+            "faction": (profile.get("faction") or {}).get("name"),
             "equipped_items": equipped_items,
         }
     except Exception as e:
-        return {"error": str(e)}
+        import traceback
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
 @mcp.tool()

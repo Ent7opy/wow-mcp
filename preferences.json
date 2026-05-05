@@ -1,7 +1,26 @@
 {
-  "goals": ["mount collecting", "profession economics", "casual PVE"],
-  "dislikes": ["hardcore raiding", "PVP"],
-  "current_focus": "Hara'ti renown grind",
-  "playstyle": "casual, questing and exploring",
-  "character_backstory_notes": "Edit this with notes about your character for the narrative feature"
+  "main_character": {
+    "name": "Kaelstan",
+    "realm": "azjolnerub",
+    "region": "eu",
+    "race": "Tauren",
+    "class": "Warrior",
+    "spec": "Arms",
+    "faction": "Horde",
+    "level": 87,
+    "current_focus": "Levelling to cap — do not recommend alt or reroll distractions yet"
+  },
+  "goals": ["mount collecting", "profession economics", "casual PVE", "see endgame content"],
+  "dislikes": ["hardcore raiding", "PVP", "being pushed toward alts before hitting cap"],
+  "playstyle": "casual, questing and exploring, new-ish player learning the game long-term",
+  "player_context": "Has played WoW on and off for years but never stuck past a few weeks. This time committed to long-term play. Understands the alt trap and wants to reach cap and experience endgame before rolling alts. Has heirlooms on Kaelstan from a previous stint.",
+  "future_goals": [
+    "Unlock Vulpera allied race (requires Vol'dun/Voldunai questline — save for after cap)",
+    "Eventually try other classes/races as alts once Kaelstan is established at endgame"
+  ],
+  "advice_rules": [
+    "Always prioritise Kaelstan's progression toward cap over alt suggestions",
+    "When allied race unlock quests come up, acknowledge the goal but recommend doing them on Kaelstan or saving for later",
+    "Endgame content, professions, and mount collecting are the reward for reaching cap — use them as motivation"
+  ]
 }
