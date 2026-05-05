@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "wow-assistant": {
+      "command": "python",
+      "args": ["/ABSOLUTE/PATH/TO/wow-mcp/server.py"],
+      "env": {
+        "BNET_CLIENT_ID": "your_client_id",
+        "BNET_CLIENT_SECRET": "your_client_secret",
+        "WOW_CHARACTER_NAME": "yourcharactername",
+        "WOW_REALM": "your-realm-name",
+        "WOW_REGION": "eu"
+      }
+    }
+  }
+}
