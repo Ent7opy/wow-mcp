@@ -1,3 +1,6 @@
+import time
+from datetime import datetime, timezone
+
 from wow_mcp.app import client, config, mcp, tool_safe
 
 
@@ -57,4 +60,36 @@ def get_auction_house_prices(
         "total_listings": len(listings),
         "cheapest_gold": listings[0]["price_gold"] if listings else None,
         "top_20_cheapest": listings[:20],
+    }
+
+
+@mcp.tool()
+@tool_safe
+def get_wow_token_price(region: str | None = None) -> dict:
+    """Get the current WoW Token price in gold for a given region.
+
+    The token is a Blizzard-issued in-game item that converts to game time
+    or Battle.net balance. Its gold price is set by the game's own market
+    and updates roughly every 20 minutes. Casual flavor question Claude
+    might field a few times a week ("is the token cheap right now?").
+
+    Args:
+        region: Region code — eu, us, kr, tw. Falls back to WOW_REGION
+            env var (defaults to 'eu'). Token price is region-specific.
+
+    The endpoint exposes only the current snapshot — no historical data is
+    available, so Claude shouldn't claim a "trend" without external context.
+    """
+    _, _, g = config.resolve("_", "_", region)
+    data = client.get("/data/wow/token/index", "dynamic", g)
+
+    price_copper = data.get("price", 0)
+    last_updated_ms = data.get("last_updated_timestamp", 0)
+    last_updated_dt = datetime.fromtimestamp(last_updated_ms / 1000, tz=timezone.utc)
+
+    return {
+        "region": g,
+        "price_gold": price_copper // 10000,
+        "last_updated": last_updated_dt.isoformat(),
+        "seconds_since_update": int(time.time() - last_updated_ms / 1000),
     }
