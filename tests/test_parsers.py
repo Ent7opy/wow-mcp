@@ -4,6 +4,7 @@ from pathlib import Path
 from wow_mcp.parsers import (
     flatten_equipped_item,
     flatten_heirloom,
+    flatten_journal_item,
     flatten_pet,
     flatten_reputation,
     flatten_toy,
@@ -141,6 +142,17 @@ def test_summarize_achievement_progress_untouched_returns_none():
 
 def test_summarize_achievement_progress_no_criteria_returns_none():
     assert summarize_achievement_progress({"id": 1, "achievement": {"name": "Bare"}}) is None
+
+
+def test_flatten_journal_item_normal():
+    items = load("journal_encounter.json")["items"]
+    assert flatten_journal_item(items[0]) == {"id": 159324, "name": "Blood Elder's Bindings"}
+    assert flatten_journal_item(items[1]) == {"id": 159330, "name": "Underrot Crawg Reins"}
+
+
+def test_flatten_journal_item_missing_item_field():
+    items = load("journal_encounter.json")["items"]
+    assert flatten_journal_item(items[3]) == {"id": None, "name": None}
 
 
 def test_flatten_heirloom():

@@ -7,6 +7,16 @@ def flatten_equipped_item(raw: dict) -> dict:
     }
 
 
+def flatten_journal_item(raw: dict) -> dict:
+    """Flatten one entry from journal-encounter.items[].
+
+    Each entry wraps the actual item under `.item`; missing or unparented
+    entries (rare but possible in older data) collapse to {id: None,
+    name: None} rather than raising."""
+    item = raw.get("item") or {}
+    return {"id": item.get("id"), "name": item.get("name")}
+
+
 def flatten_heirloom(raw: dict) -> dict:
     return {
         "id": (raw.get("heirloom") or {}).get("id"),

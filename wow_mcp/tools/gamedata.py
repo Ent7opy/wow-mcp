@@ -2,9 +2,11 @@ import time
 from datetime import datetime, timezone
 
 from wow_mcp.app import client, config, mcp, tool_safe
+from wow_mcp.parsers import flatten_journal_item
 
 
 CONNECTED_REALM_CACHE_TTL = 86400
+JOURNAL_CACHE_TTL = 86400
 
 
 @mcp.tool()
@@ -92,4 +94,79 @@ def get_wow_token_price(region: str | None = None) -> dict:
         "price_gold": price_copper // 10000,
         "last_updated": last_updated_dt.isoformat(),
         "seconds_since_update": int(time.time() - last_updated_ms / 1000),
+    }
+
+
+@mcp.tool()
+@tool_safe
+def get_dungeon_or_raid_loot(name: str, region: str | None = None) -> dict:
+    """Look up the loot table for a dungeon or raid by name.
+
+    Walks the journal-instance index, finds the matching instance, then
+    returns each encounter's loot list (item id + name). All three
+    underlying endpoints are static-namespace and cached for 24h, so
+    repeat queries on the same instance are nearly free.
+
+    Args:
+        name: Dungeon or raid name. Case-insensitive substring match —
+            "underrot" matches "The Underrot". If multiple match and none
+            is exact, returns an `ambiguous: True` response with the top
+            matches so the caller can disambiguate.
+        region: Region code — eu, us, kr, tw. Falls back to WOW_REGION
+            env var. Static-namespace data is region-keyed but content is
+            identical across regions; pick the configured one.
+    """
+    _, _, g = config.resolve("_", "_", region)
+
+    index = client.get(
+        "/data/wow/journal-instance/index", "static", g, cache_ttl=JOURNAL_CACHE_TTL
+    )
+    needle = name.strip().lower()
+    matches = [
+        i for i in index.get("instances", [])
+        if needle in (i.get("name") or "").lower()
+    ]
+    if not matches:
+        return {"error": f"No dungeon or raid found matching {name!r}"}
+
+    exact = [m for m in matches if (m.get("name") or "").lower() == needle]
+    if exact:
+        chosen = exact[0]
+    elif len(matches) == 1:
+        chosen = matches[0]
+    else:
+        return {
+            "ambiguous": True,
+            "query": name,
+            "matches": [{"id": m.get("id"), "name": m.get("name")} for m in matches[:10]],
+            "note": "Multiple matches — call again with a more specific name.",
+        }
+
+    instance = client.get(
+        f"/data/wow/journal-instance/{chosen['id']}",
+        "static",
+        g,
+        cache_ttl=JOURNAL_CACHE_TTL,
+    )
+
+    encounters = []
+    for enc_ref in instance.get("encounters", []):
+        encounter = client.get(
+            f"/data/wow/journal-encounter/{enc_ref['id']}",
+            "static",
+            g,
+            cache_ttl=JOURNAL_CACHE_TTL,
+        )
+        encounters.append({
+            "name": encounter.get("name"),
+            "items": [flatten_journal_item(i) for i in encounter.get("items", [])],
+        })
+
+    return {
+        "name": instance.get("name"),
+        "expansion": (instance.get("expansion") or {}).get("name"),
+        "category": (instance.get("category") or {}).get("type"),
+        "minimum_level": instance.get("minimum_level"),
+        "total_encounters": len(encounters),
+        "encounters": encounters,
     }
