@@ -95,7 +95,9 @@ Rules:
 - When asked about crafting vs selling, always call get_auction_house_prices and get_character_professions before answering
 - For "what can I craft" or "do I have a recipe for X", call get_character_professions with include_recipes=True
 - For allied-race unlocks, faction grinds, or any rep-gated goal, call get_character_reputations — a faction absent from the response means the player has not started that questline yet
-- For mount questions, call get_character_mounts to skip mounts already collected
+- For "what does X dungeon/raid drop" or "what dungeon drops Y mount", call get_dungeon_or_raid_loot
+- For mount questions, call get_character_mounts to skip mounts already collected; for "what mounts could I chase", call get_missing_mounts with name_filter and (optionally) include_source=True for source category and faction gate
+- For "have I done X questline" or "am I currently on Y", call find_character_quests — pairs with get_character_reputations for rep-gated unlocks
 - For heirloom, pet, or toy questions, call get_character_collection with the matching kind
 - For "how close am I to X achievement", call get_character_achievements with include_progress=True
 - For WoW Token gold-price glance questions, call get_wow_token_price
@@ -130,7 +132,10 @@ Edit `preferences.json` directly whenever your goals or focus changes. Claude re
 | `get_character_achievements(include_progress=False)` | Completed achievements with timestamps. With `include_progress=True`, also returns an `in_progress` list sorted by completion ratio (e.g. "15/16 — one step from done") |
 | `get_character_reputations` | Faction standings — classic tier or renown level, value/max within current tier, derived `progress_pct`. Factions never met don't appear, which is itself a useful signal for unlock questions |
 | `get_character_collection(kind)` | `kind` is one of `'heirlooms'`, `'pets'`, `'toys'`. Uniform `{kind, total, items}` shape with per-kind identifying fields (upgrade_level for heirlooms, level/quality for pets) |
+| `find_character_quests(query, limit=30)` | Substring search across both completed and in-progress quest lists; returns matched quests in each category with id+name. Pairs with `get_character_reputations` for rep-gated unlock checks |
 | `get_auction_house_prices(item_name)` | Total listings, cheapest price in gold, top 20 cheapest listings |
+| `get_dungeon_or_raid_loot(name)` | Case-insensitive substring search on the journal-instance index, then walks each encounter for its loot table (id + name per item). Returns `ambiguous: True` with candidates when the name matches multiple instances |
+| `get_missing_mounts(name_filter=None, limit=30, include_source=False)` | Diff of the mount index against the character's collected list, alphabetised, filtered, and capped. With `include_source=True`, parallel-fetches each returned mount's detail and attaches `source_type` (DROP/VENDOR/QUEST/ACHIEVEMENT/etc.) and `faction_required` |
 | `get_wow_token_price(region=None)` | Current WoW Token price in gold for the region, plus last-updated timestamp and seconds-since-update for freshness |
 | `get_player_preferences` | Your goals, dislikes, current focus, and playstyle from `preferences.json` |
 
