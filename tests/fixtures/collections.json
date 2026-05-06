@@ -1,0 +1,21 @@
+{
+  "heirlooms": {
+    "heirlooms": [
+      {"heirloom": {"id": 709, "name": "Tattered Dreadmist Mask"}, "upgrade": {"level": 0}},
+      {"heirloom": {"id": 720, "name": "Preened Tribal War Feathers"}, "upgrade": {"level": 3}}
+    ]
+  },
+  "pets": {
+    "pets": [
+      {"species": {"id": 387, "name": "Snake"}, "level": 4, "quality": {"type": "UNCOMMON", "name": "Uncommon"}},
+      {"species": {"id": 119, "name": "Cockroach"}, "level": 1, "quality": {"name": "Poor"}}
+    ],
+    "unlocked_battle_pet_slots": [{"slot": 0, "is_locked": false}]
+  },
+  "toys": {
+    "toys": [
+      {"toy": {"id": 17716, "name": "Snowball"}},
+      {"toy": {"id": 35513, "name": "Brewfest Banner"}}
+    ]
+  }
+}

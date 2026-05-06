@@ -7,6 +7,30 @@ def flatten_equipped_item(raw: dict) -> dict:
     }
 
 
+def flatten_heirloom(raw: dict) -> dict:
+    return {
+        "id": (raw.get("heirloom") or {}).get("id"),
+        "name": (raw.get("heirloom") or {}).get("name"),
+        "upgrade_level": (raw.get("upgrade") or {}).get("level", 0),
+    }
+
+
+def flatten_pet(raw: dict) -> dict:
+    return {
+        "id": (raw.get("species") or {}).get("id"),
+        "name": (raw.get("species") or {}).get("name"),
+        "level": raw.get("level"),
+        "quality": (raw.get("quality") or {}).get("name"),
+    }
+
+
+def flatten_toy(raw: dict) -> dict:
+    return {
+        "id": (raw.get("toy") or {}).get("id"),
+        "name": (raw.get("toy") or {}).get("name"),
+    }
+
+
 def flatten_reputation(raw: dict) -> dict:
     """Reduce a raw reputation entry to {faction, standing, value/max, pct}.
 

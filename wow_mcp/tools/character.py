@@ -3,9 +3,19 @@ from wow_mcp.parsers import (
     extract_profession_tier,
     extract_profession_with_recipes,
     flatten_equipped_item,
+    flatten_heirloom,
+    flatten_pet,
     flatten_reputation,
+    flatten_toy,
     summarize_achievement_progress,
 )
+
+
+_COLLECTION_PARSERS = {
+    "heirlooms": flatten_heirloom,
+    "pets": flatten_pet,
+    "toys": flatten_toy,
+}
 
 
 @mcp.tool()
@@ -178,4 +188,44 @@ def get_character_reputations(
     return {
         "total": len(reputations),
         "reputations": reputations,
+    }
+
+
+@mcp.tool()
+@tool_safe
+def get_character_collection(
+    kind: str,
+    character: str | None = None,
+    realm: str | None = None,
+    region: str | None = None,
+) -> dict:
+    """Get one of the character's non-mount collections: heirlooms, pets, or toys.
+
+    Mounts have their own dedicated tool (get_character_mounts) since they're
+    the most-asked-about collection. This tool covers the others.
+
+    Args:
+        kind: One of 'heirlooms', 'pets', 'toys'. Required.
+        character: Character name. Falls back to WOW_CHARACTER_NAME env var.
+        realm: Realm slug. Falls back to WOW_REALM env var.
+        region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+
+    Returns a uniform shape: {kind, total, items}. Each item carries the
+    minimum identifying fields for that collection — id and name always,
+    plus upgrade_level for heirlooms, level/quality for pets.
+    """
+    parser = _COLLECTION_PARSERS.get(kind)
+    if parser is None:
+        raise ValueError(
+            f"kind must be one of {sorted(_COLLECTION_PARSERS)} (got {kind!r})"
+        )
+    c, r, g = config.resolve(character, realm, region)
+    data = client.get(
+        f"/profile/wow/character/{r}/{c}/collections/{kind}", "profile", g
+    )
+    items = [parser(entry) for entry in data.get(kind, [])]
+    return {
+        "kind": kind,
+        "total": len(items),
+        "items": items,
     }

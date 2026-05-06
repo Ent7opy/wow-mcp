@@ -3,7 +3,10 @@ from pathlib import Path
 
 from wow_mcp.parsers import (
     flatten_equipped_item,
+    flatten_heirloom,
+    flatten_pet,
     flatten_reputation,
+    flatten_toy,
     extract_profession_tier,
     extract_profession_with_recipes,
     summarize_achievement_progress,
@@ -138,6 +141,32 @@ def test_summarize_achievement_progress_untouched_returns_none():
 
 def test_summarize_achievement_progress_no_criteria_returns_none():
     assert summarize_achievement_progress({"id": 1, "achievement": {"name": "Bare"}}) is None
+
+
+def test_flatten_heirloom():
+    items = load("collections.json")["heirlooms"]["heirlooms"]
+    assert flatten_heirloom(items[0]) == {
+        "id": 709,
+        "name": "Tattered Dreadmist Mask",
+        "upgrade_level": 0,
+    }
+    assert flatten_heirloom(items[1])["upgrade_level"] == 3
+
+
+def test_flatten_pet():
+    items = load("collections.json")["pets"]["pets"]
+    assert flatten_pet(items[0]) == {
+        "id": 387,
+        "name": "Snake",
+        "level": 4,
+        "quality": "Uncommon",
+    }
+
+
+def test_flatten_toy():
+    items = load("collections.json")["toys"]["toys"]
+    assert flatten_toy(items[0]) == {"id": 17716, "name": "Snowball"}
+    assert flatten_toy(items[1]) == {"id": 35513, "name": "Brewfest Banner"}
 
 
 def test_flatten_reputation_classic_tier():
