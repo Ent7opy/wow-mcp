@@ -7,6 +7,7 @@ from wow_mcp.parsers import flatten_journal_item
 
 CONNECTED_REALM_CACHE_TTL = 86400
 JOURNAL_CACHE_TTL = 86400
+MOUNT_INDEX_CACHE_TTL = 86400
 
 
 @mcp.tool()
@@ -169,4 +170,66 @@ def get_dungeon_or_raid_loot(name: str, region: str | None = None) -> dict:
         "minimum_level": instance.get("minimum_level"),
         "total_encounters": len(encounters),
         "encounters": encounters,
+    }
+
+
+@mcp.tool()
+@tool_safe
+def get_missing_mounts(
+    name_filter: str | None = None,
+    limit: int = 30,
+    character: str | None = None,
+    realm: str | None = None,
+    region: str | None = None,
+) -> dict:
+    """List mounts the character has NOT yet collected.
+
+    The mount index has 1500+ entries, so unfiltered queries cap at `limit`
+    results (default 30). Always pass a `name_filter` for targeted hunts —
+    e.g. name_filter='wolf' to find every uncollected wolf-themed mount.
+
+    The complement to get_character_mounts: where that lists what's owned,
+    this lists what's chase-able. Pairs naturally with the casual
+    mount-collecting goal in preferences.json.
+
+    Args:
+        name_filter: Optional case-insensitive substring filter on mount name.
+        limit: Max mounts returned (default 30; pass higher to widen).
+        character: Character name. Falls back to WOW_CHARACTER_NAME env var.
+        realm: Realm slug. Falls back to WOW_REALM env var.
+        region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+    """
+    c, r, g = config.resolve(character, realm, region)
+
+    index = client.get(
+        "/data/wow/mount/index", "static", g, cache_ttl=MOUNT_INDEX_CACHE_TTL
+    )
+    collected = client.get(
+        f"/profile/wow/character/{r}/{c}/collections/mounts", "profile", g
+    )
+
+    collected_ids = {
+        (m.get("mount") or {}).get("id") for m in collected.get("mounts", [])
+    }
+    all_mounts = index.get("mounts", [])
+    missing = [m for m in all_mounts if m.get("id") not in collected_ids]
+    total_missing = len(missing)
+
+    matched = missing
+    if name_filter:
+        needle = name_filter.lower()
+        matched = [m for m in missing if needle in (m.get("name") or "").lower()]
+
+    matched.sort(key=lambda m: (m.get("name") or "").lower())
+    returned = matched[:limit]
+
+    return {
+        "total_collected": len(collected_ids),
+        "total_missing": total_missing,
+        "name_filter": name_filter,
+        "matched": len(matched) if name_filter else total_missing,
+        "truncated": len(matched) > limit,
+        "mounts": [
+            {"id": m.get("id"), "name": m.get("name")} for m in returned
+        ],
     }
