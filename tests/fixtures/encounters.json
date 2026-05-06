@@ -1,0 +1,24 @@
+{
+  "expansions": [
+    {
+      "expansion": {"id": 401, "name": "Midnight"},
+      "instances": [
+        {
+          "instance": {"id": 1311, "name": "Den of Nalorakk"},
+          "modes": [
+            {
+              "difficulty": {"type": "NORMAL", "name": "Normal"},
+              "status": {"type": "COMPLETE", "name": "Complete"},
+              "progress": {"completed_count": 4, "total_count": 4}
+            },
+            {
+              "difficulty": {"type": "HEROIC", "name": "Heroic"},
+              "status": {"type": "INCOMPLETE", "name": "Incomplete"},
+              "progress": {"completed_count": 2, "total_count": 4}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

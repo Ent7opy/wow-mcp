@@ -2,6 +2,7 @@ from wow_mcp.app import client, config, mcp, tool_safe
 from wow_mcp.parsers import (
     extract_profession_tier,
     extract_profession_with_recipes,
+    flatten_encounter_instance,
     flatten_equipped_item,
     flatten_heirloom,
     flatten_pet,
@@ -289,4 +290,54 @@ def find_character_quests(
         "completed_match_count": len(completed_matches),
         "in_progress_matches": in_progress_matches[:limit],
         "in_progress_match_count": len(in_progress_matches),
+    }
+
+
+@mcp.tool()
+@tool_safe
+def get_character_completed_encounters(
+    character: str | None = None,
+    realm: str | None = None,
+    region: str | None = None,
+) -> dict:
+    """Get the character's dungeon and raid encounter history.
+
+    Returns every dungeon and raid the character has *touched* (any difficulty,
+    any progress level), grouped by expansion. For each instance, lists the
+    difficulty modes attempted with completion status and encounter progress
+    (X of N bosses cleared).
+
+    Useful for "have I cleared this content?" or "what content have I seen?"
+    questions — i.e. the casual content-explorer angle, not the M+/raid-log
+    optimisation angle. Empty raids list is normal for non-raiders.
+
+    Two profile endpoints are fetched in parallel via BnetClient.get_many.
+
+    Args:
+        character: Character name. Falls back to WOW_CHARACTER_NAME env var.
+        realm: Realm slug. Falls back to WOW_REALM env var.
+        region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+    """
+    c, r, g = config.resolve(character, realm, region)
+    base = f"/profile/wow/character/{r}/{c}/encounters"
+    dungeons_data, raids_data = client.get_many([
+        {"path": f"{base}/dungeons", "namespace": "profile", "region": g},
+        {"path": f"{base}/raids", "namespace": "profile", "region": g},
+    ])
+
+    def _flatten(payload: dict) -> list:
+        out = []
+        for exp in payload.get("expansions", []) or []:
+            exp_name = (exp.get("expansion") or {}).get("name")
+            for instance in exp.get("instances", []) or []:
+                out.append(flatten_encounter_instance(instance, exp_name))
+        return out
+
+    dungeons = _flatten(dungeons_data)
+    raids = _flatten(raids_data)
+    return {
+        "dungeons": dungeons,
+        "raids": raids,
+        "total_dungeons": len(dungeons),
+        "total_raids": len(raids),
     }

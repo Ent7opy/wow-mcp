@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from wow_mcp.parsers import (
+    flatten_encounter_instance,
     flatten_equipped_item,
     flatten_heirloom,
     flatten_journal_item,
@@ -142,6 +143,35 @@ def test_summarize_achievement_progress_untouched_returns_none():
 
 def test_summarize_achievement_progress_no_criteria_returns_none():
     assert summarize_achievement_progress({"id": 1, "achievement": {"name": "Bare"}}) is None
+
+
+def test_flatten_encounter_instance_multi_difficulty():
+    expansion = load("encounters.json")["expansions"][0]
+    instance = expansion["instances"][0]
+    parsed = flatten_encounter_instance(instance, expansion["expansion"]["name"])
+    assert parsed == {
+        "name": "Den of Nalorakk",
+        "expansion": "Midnight",
+        "difficulties": [
+            {
+                "difficulty": "Normal",
+                "status": "Complete",
+                "completed_count": 4,
+                "total_count": 4,
+            },
+            {
+                "difficulty": "Heroic",
+                "status": "Incomplete",
+                "completed_count": 2,
+                "total_count": 4,
+            },
+        ],
+    }
+
+
+def test_flatten_encounter_instance_no_modes():
+    parsed = flatten_encounter_instance({"instance": {"name": "Bare"}}, "ExpY")
+    assert parsed == {"name": "Bare", "expansion": "ExpY", "difficulties": []}
 
 
 def test_flatten_journal_item_normal():

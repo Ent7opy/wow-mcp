@@ -7,6 +7,29 @@ def flatten_equipped_item(raw: dict) -> dict:
     }
 
 
+def flatten_encounter_instance(raw: dict, expansion_name: str | None) -> dict:
+    """Flatten one entry from /encounters/{dungeons,raids}.expansions[].instances[]
+    into {name, expansion, difficulties: [{difficulty, status, completed_count,
+    total_count}]} — the shape Claude wants for "have I cleared X?" answers.
+
+    Each instance can have multiple difficulty modes (Normal, Heroic, Mythic);
+    the API returns a separate `modes` entry per difficulty the character has
+    touched. Status comes back as 'COMPLETE' or 'INCOMPLETE'."""
+    return {
+        "name": (raw.get("instance") or {}).get("name"),
+        "expansion": expansion_name,
+        "difficulties": [
+            {
+                "difficulty": (mode.get("difficulty") or {}).get("name"),
+                "status": (mode.get("status") or {}).get("name"),
+                "completed_count": (mode.get("progress") or {}).get("completed_count"),
+                "total_count": (mode.get("progress") or {}).get("total_count"),
+            }
+            for mode in raw.get("modes", [])
+        ],
+    }
+
+
 def flatten_journal_item(raw: dict) -> dict:
     """Flatten one entry from journal-encounter.items[].
 
