@@ -229,3 +229,64 @@ def get_character_collection(
         "total": len(items),
         "items": items,
     }
+
+
+@mcp.tool()
+@tool_safe
+def find_character_quests(
+    query: str,
+    limit: int = 30,
+    character: str | None = None,
+    realm: str | None = None,
+    region: str | None = None,
+) -> dict:
+    """Find quests matching a name substring across BOTH completed and
+    in-progress lists for a character.
+
+    Answers "have I done X?" and "am I currently on X?" in one call. Two
+    profile endpoints are fetched in parallel via BnetClient.get_many —
+    /quests/completed for the done list and /quests for the active list.
+    Both endpoints inline the quest name on each entry, so there's no
+    name-to-id resolution needed.
+
+    Pairs naturally with get_character_reputations for rep-gated unlock
+    questions: e.g. for the Vulpera unlock, query='Voldunai' or
+    query="Vol'dun" surfaces every related quest the character has touched.
+
+    Args:
+        query: Case-insensitive substring to match against quest names.
+        limit: Cap on each of the two returned lists (default 30).
+        character: Character name. Falls back to WOW_CHARACTER_NAME env var.
+        realm: Realm slug. Falls back to WOW_REALM env var.
+        region: Region code — eu, us, kr, tw. Defaults to 'eu'.
+    """
+    c, r, g = config.resolve(character, realm, region)
+    base = f"/profile/wow/character/{r}/{c}"
+    completed_data, active_data = client.get_many([
+        {"path": f"{base}/quests/completed", "namespace": "profile", "region": g},
+        {"path": f"{base}/quests", "namespace": "profile", "region": g},
+    ])
+
+    needle = query.strip().lower()
+
+    def _matches(entries: list) -> list:
+        return [
+            {"id": q.get("id"), "name": q.get("name")}
+            for q in entries
+            if needle in (q.get("name") or "").lower()
+        ]
+
+    completed_all = completed_data.get("quests", []) or []
+    in_progress_all = active_data.get("in_progress", []) or []
+    completed_matches = _matches(completed_all)
+    in_progress_matches = _matches(in_progress_all)
+
+    return {
+        "query": query,
+        "total_completed": len(completed_all),
+        "total_in_progress": len(in_progress_all),
+        "completed_matches": completed_matches[:limit],
+        "completed_match_count": len(completed_matches),
+        "in_progress_matches": in_progress_matches[:limit],
+        "in_progress_match_count": len(in_progress_matches),
+    }
