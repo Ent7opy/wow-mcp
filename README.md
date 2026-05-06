@@ -93,8 +93,13 @@ Rules:
 - For current Midnight expansion content (zones, NPCs, quests, renown, patch mechanics), use web search — do not rely on training data for anything post-2025
 - Tailor all recommendations to the character's actual equipped ilvl, spec, and profession skill levels
 - When asked about crafting vs selling, always call get_auction_house_prices and get_character_professions before answering
-- Keep answers direct and practical — skip generic disclaimers
+- For "what can I craft" or "do I have a recipe for X", call get_character_professions with include_recipes=True
+- For allied-race unlocks, faction grinds, or any rep-gated goal, call get_character_reputations — a faction absent from the response means the player has not started that questline yet
 - For mount questions, call get_character_mounts to skip mounts already collected
+- For heirloom, pet, or toy questions, call get_character_collection with the matching kind
+- For "how close am I to X achievement", call get_character_achievements with include_progress=True
+- For WoW Token gold-price glance questions, call get_wow_token_price
+- Keep answers direct and practical — skip generic disclaimers
 ```
 
 ---
@@ -120,10 +125,13 @@ Edit `preferences.json` directly whenever your goals or focus changes. Claude re
 | Tool | What it returns |
 |------|----------------|
 | `get_character_profile` | Name, level, race, class, spec, avg/equipped ilvl, faction, full gear list with slot/name/ilvl/quality |
-| `get_character_professions` | Primary and secondary professions with current and max skill points |
+| `get_character_professions(include_recipes=False)` | Primary and secondary professions with current and max skill points. With `include_recipes=True`, also returns a per-tier breakdown including every known recipe (id + name) |
 | `get_character_mounts` | Total collected count and full list of mount names |
-| `get_character_achievements` | Total completed count and list of achievements with timestamps |
+| `get_character_achievements(include_progress=False)` | Completed achievements with timestamps. With `include_progress=True`, also returns an `in_progress` list sorted by completion ratio (e.g. "15/16 — one step from done") |
+| `get_character_reputations` | Faction standings — classic tier or renown level, value/max within current tier, derived `progress_pct`. Factions never met don't appear, which is itself a useful signal for unlock questions |
+| `get_character_collection(kind)` | `kind` is one of `'heirlooms'`, `'pets'`, `'toys'`. Uniform `{kind, total, items}` shape with per-kind identifying fields (upgrade_level for heirlooms, level/quality for pets) |
 | `get_auction_house_prices(item_name)` | Total listings, cheapest price in gold, top 20 cheapest listings |
+| `get_wow_token_price(region=None)` | Current WoW Token price in gold for the region, plus last-updated timestamp and seconds-since-update for freshness |
 | `get_player_preferences` | Your goals, dislikes, current focus, and playstyle from `preferences.json` |
 
 ---
