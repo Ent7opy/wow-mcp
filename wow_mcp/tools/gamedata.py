@@ -8,6 +8,32 @@ from wow_mcp.parsers import flatten_journal_item
 CONNECTED_REALM_CACHE_TTL = 86400
 JOURNAL_CACHE_TTL = 86400
 MOUNT_INDEX_CACHE_TTL = 86400
+SOURCE_FILTER_FANOUT_CAP = 100
+
+
+def _enrich_mounts_with_source(region: str, mounts: list[dict]) -> list[dict]:
+    """Fan-out /data/wow/mount/{id} for each entry, attach source_type,
+    source label, and faction_required (if any) in place. Each call is
+    24h-cached, so repeat enrichments are nearly free."""
+    if not mounts:
+        return mounts
+    details = client.get_many([
+        {
+            "path": f"/data/wow/mount/{m['id']}",
+            "namespace": "static",
+            "region": region,
+            "cache_ttl": MOUNT_INDEX_CACHE_TTL,
+        }
+        for m in mounts
+    ])
+    for mount_dict, detail in zip(mounts, details):
+        source = detail.get("source") or {}
+        mount_dict["source_type"] = source.get("type")
+        mount_dict["source"] = source.get("name")
+        faction = ((detail.get("requirements") or {}).get("faction") or {}).get("name")
+        if faction:
+            mount_dict["faction_required"] = faction
+    return mounts
 
 
 @mcp.tool()
@@ -177,6 +203,7 @@ def get_dungeon_or_raid_loot(name: str, region: str | None = None) -> dict:
 @tool_safe
 def get_missing_mounts(
     name_filter: str | None = None,
+    source_filter: str | None = None,
     limit: int = 30,
     include_source: bool = False,
     character: str | None = None,
@@ -192,14 +219,22 @@ def get_missing_mounts(
     With include_source=True, each returned mount is enriched with its
     source category (DROP/VENDOR/QUEST/ACHIEVEMENT/etc.) and faction gate
     if any. That triggers one extra API call per returned mount (cached
-    24h, fan-out parallelised), so keep `limit` modest when using it —
-    25-30 is a good ceiling.
+    24h, fan-out parallelised).
+
+    With source_filter (e.g. 'ACHIEVEMENT'), the result is narrowed to
+    mounts of that source type — applied BEFORE limit so the slice is
+    relevant. Source enrichment happens implicitly. Source-filter
+    requires fetching detail for every name-filter candidate, so it caps
+    at 100 candidates; if name_filter doesn't narrow enough, the tool
+    errors out and asks for a tighter name_filter.
 
     Args:
         name_filter: Optional case-insensitive substring filter on mount name.
+        source_filter: Optional source-type filter (DROP, VENDOR, QUEST,
+            ACHIEVEMENT, PROFESSION, WORLD_EVENT, etc.). Case-insensitive.
         limit: Max mounts returned (default 30; pass higher to widen).
-        include_source: If True, also fetch and attach source_type, source,
-            and faction_required for each returned mount.
+        include_source: If True (and source_filter not set), also fetch
+            and attach source fields for each returned mount.
         character: Character name. Falls back to WOW_CHARACTER_NAME env var.
         realm: Realm slug. Falls back to WOW_REALM env var.
         region: Region code — eu, us, kr, tw. Defaults to 'eu'.
@@ -226,32 +261,39 @@ def get_missing_mounts(
         matched = [m for m in missing if needle in (m.get("name") or "").lower()]
 
     matched.sort(key=lambda m: (m.get("name") or "").lower())
-    returned = [{"id": m.get("id"), "name": m.get("name")} for m in matched[:limit]]
 
-    if include_source and returned:
-        specs = [
-            {
-                "path": f"/data/wow/mount/{m['id']}",
-                "namespace": "static",
-                "region": g,
-                "cache_ttl": MOUNT_INDEX_CACHE_TTL,
+    if source_filter is not None:
+        if len(matched) > SOURCE_FILTER_FANOUT_CAP:
+            return {
+                "error": (
+                    f"source_filter requires fetching detail for every "
+                    f"name-filter candidate; {len(matched)} candidates exceeds "
+                    f"the {SOURCE_FILTER_FANOUT_CAP} cap. Tighten name_filter."
+                ),
+                "name_filter": name_filter,
+                "source_filter": source_filter,
+                "candidates_before_source_filter": len(matched),
             }
-            for m in returned
+        candidates = [{"id": m["id"], "name": m["name"]} for m in matched]
+        _enrich_mounts_with_source(g, candidates)
+        needle = source_filter.upper()
+        candidates = [
+            c for c in candidates if (c.get("source_type") or "").upper() == needle
         ]
-        details = client.get_many(specs)
-        for mount_dict, detail in zip(returned, details):
-            source = detail.get("source") or {}
-            mount_dict["source_type"] = source.get("type")
-            mount_dict["source"] = source.get("name")
-            faction = ((detail.get("requirements") or {}).get("faction") or {}).get("name")
-            if faction:
-                mount_dict["faction_required"] = faction
+    else:
+        candidates = [{"id": m.get("id"), "name": m.get("name")} for m in matched]
+
+    returned = candidates[:limit]
+
+    if include_source and source_filter is None and returned:
+        _enrich_mounts_with_source(g, returned)
 
     return {
         "total_collected": len(collected_ids),
         "total_missing": total_missing,
         "name_filter": name_filter,
-        "matched": len(matched) if name_filter else total_missing,
-        "truncated": len(matched) > limit,
+        "source_filter": source_filter,
+        "matched": len(candidates) if (name_filter or source_filter) else total_missing,
+        "truncated": len(candidates) > limit,
         "mounts": returned,
     }
