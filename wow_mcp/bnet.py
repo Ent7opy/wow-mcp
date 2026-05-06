@@ -1,3 +1,4 @@
+import concurrent.futures
 import time
 from typing import Any
 
@@ -65,6 +66,24 @@ class BnetClient:
         if cache_key is not None and cache_ttl:
             self._cache[cache_key] = (data, time.time() + cache_ttl)
         return data
+
+    def get_many(self, specs: list[dict], *, max_workers: int = 8) -> list[dict]:
+        """Run multiple GETs concurrently via a thread pool, preserving order.
+
+        Each spec is a kwargs dict for `.get()` — e.g.
+        {"path": "/data/wow/mount/123", "namespace": "static", "region": "eu",
+         "cache_ttl": 86400}. Exceptions propagate from the corresponding
+        .result() call so a single failure surfaces through @tool_safe at
+        the call site rather than being silently swallowed.
+
+        httpx.Client is thread-safe, and the token/static caches use plain
+        dicts whose worst-case race outcome is a duplicate fetch (no
+        correctness issue) — so no explicit locking is needed."""
+        if not specs:
+            return []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [pool.submit(self.get, **spec) for spec in specs]
+            return [f.result() for f in futures]
 
     def close(self) -> None:
         self._http.close()

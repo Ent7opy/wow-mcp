@@ -178,6 +178,7 @@ def get_dungeon_or_raid_loot(name: str, region: str | None = None) -> dict:
 def get_missing_mounts(
     name_filter: str | None = None,
     limit: int = 30,
+    include_source: bool = False,
     character: str | None = None,
     realm: str | None = None,
     region: str | None = None,
@@ -188,13 +189,17 @@ def get_missing_mounts(
     results (default 30). Always pass a `name_filter` for targeted hunts —
     e.g. name_filter='wolf' to find every uncollected wolf-themed mount.
 
-    The complement to get_character_mounts: where that lists what's owned,
-    this lists what's chase-able. Pairs naturally with the casual
-    mount-collecting goal in preferences.json.
+    With include_source=True, each returned mount is enriched with its
+    source category (DROP/VENDOR/QUEST/ACHIEVEMENT/etc.) and faction gate
+    if any. That triggers one extra API call per returned mount (cached
+    24h, fan-out parallelised), so keep `limit` modest when using it —
+    25-30 is a good ceiling.
 
     Args:
         name_filter: Optional case-insensitive substring filter on mount name.
         limit: Max mounts returned (default 30; pass higher to widen).
+        include_source: If True, also fetch and attach source_type, source,
+            and faction_required for each returned mount.
         character: Character name. Falls back to WOW_CHARACTER_NAME env var.
         realm: Realm slug. Falls back to WOW_REALM env var.
         region: Region code — eu, us, kr, tw. Defaults to 'eu'.
@@ -221,7 +226,26 @@ def get_missing_mounts(
         matched = [m for m in missing if needle in (m.get("name") or "").lower()]
 
     matched.sort(key=lambda m: (m.get("name") or "").lower())
-    returned = matched[:limit]
+    returned = [{"id": m.get("id"), "name": m.get("name")} for m in matched[:limit]]
+
+    if include_source and returned:
+        specs = [
+            {
+                "path": f"/data/wow/mount/{m['id']}",
+                "namespace": "static",
+                "region": g,
+                "cache_ttl": MOUNT_INDEX_CACHE_TTL,
+            }
+            for m in returned
+        ]
+        details = client.get_many(specs)
+        for mount_dict, detail in zip(returned, details):
+            source = detail.get("source") or {}
+            mount_dict["source_type"] = source.get("type")
+            mount_dict["source"] = source.get("name")
+            faction = ((detail.get("requirements") or {}).get("faction") or {}).get("name")
+            if faction:
+                mount_dict["faction_required"] = faction
 
     return {
         "total_collected": len(collected_ids),
@@ -229,7 +253,5 @@ def get_missing_mounts(
         "name_filter": name_filter,
         "matched": len(matched) if name_filter else total_missing,
         "truncated": len(matched) > limit,
-        "mounts": [
-            {"id": m.get("id"), "name": m.get("name")} for m in returned
-        ],
+        "mounts": returned,
     }
